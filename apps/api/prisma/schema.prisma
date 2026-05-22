@@ -1,0 +1,80 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           Int              @id @default(autoincrement())
+  username     String           @unique
+  passwordHash String
+  createdAt    DateTime         @default(now())
+  generations  ImageGeneration[]
+  historyItems GenerationHistory[]
+}
+
+model ImageGeneration {
+  id        Int                @id @default(autoincrement())
+  userId    Int
+  sourceUrl String
+  prompt    String
+  resultUrl String
+  createdAt DateTime           @default(now())
+  historyId Int?
+  history   GenerationHistory? @relation(fields: [historyId], references: [id], onDelete: Cascade)
+  user      User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model GenerationHistory {
+  id         Int               @id @default(autoincrement())
+  userId     Int
+  modelId    String
+  modelName  String
+  taskType   String
+  prompt     String
+  sourceUrl  String            @default("")
+  textResult String            @default("")
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
+  user       User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  images     ImageGeneration[]
+
+  @@index([userId, createdAt])
+}
+
+model Provider {
+  id                String   @id
+  name              String
+  adapterType       String
+  baseUrl           String
+  authType          String   @default("bearer")
+  defaultModel      String?
+  defaultChannel    String?
+  defaultBackend    String?
+  enabled           Boolean  @default(false)
+  supportsHealthCheck Boolean @default(false)
+  supportsUsageSync Boolean  @default(false)
+  configJson        String   @default("{}")
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  models            ModelDefinition[]
+}
+
+model ModelDefinition {
+  id                String   @id
+  providerId        String
+  displayName       String
+  upstreamModelName String
+  taskTypesJson     String   @default("[]")
+  contextWindow     Int?
+  parameterSchemaJson String @default("{}")
+  enabled           Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  provider          Provider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+}
